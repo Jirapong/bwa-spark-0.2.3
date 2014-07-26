@@ -194,8 +194,8 @@ object FastMap {
     var reader2: BufferedReader = null
 
     if((bwaMemOpt.flag & MEM_F_PE) > 0) {
-      reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq"))
-      reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_2_10Mreads.fq"))
+      reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_1Mreads.fq"))
+      reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_2_1Mreads.fq"))
     }
     else
       reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_20reads.fq"))      
@@ -332,6 +332,7 @@ object FastMap {
         if((i % 10000) == 0) println(i) } )
     }
     else {
+/*
       while(i < testReads.size) {
         var alnRegVec: Array[Array[MemAlnRegType]] = new Array[Array[MemAlnRegType]](2)
         var seqs: Array[FASTQSingleNode] = new Array[FASTQSingleNode](2)
@@ -342,11 +343,42 @@ object FastMap {
         if(testReads(i + 1).regs != null) 
           alnRegVec(1) = testReads(i + 1).regs.regs
         seqs(1) = testReads(i + 1).seq
-        bwaMemWorker2Pair(opt, alnRegVec, bns, pac, seqs, numProcessed + i, pes)      
+        bwaMemWorker2Pair(opt, alnRegVec, bns, pac, seqs, (numProcessed + i) >> 1, pes)      
 
         i += 2
         if((i % 1000) == 0) println(i)
       }
+    }
+*/
+
+      var seqsPairs: Array[Array[FASTQSingleNode]] = new Array[Array[FASTQSingleNode]](testReads.size >> 1)
+      var alnRegVecPairs: Array[Array[Array[MemAlnRegType]]] = new Array[Array[Array[MemAlnRegType]]](testReads.size >> 1)
+      var idx = 0
+
+      while(i < testReads.size) {
+        var alnRegVec: Array[Array[MemAlnRegType]] = new Array[Array[MemAlnRegType]](2)
+        var seqs: Array[FASTQSingleNode] = new Array[FASTQSingleNode](2)
+      
+        if(testReads(i).regs != null) 
+          alnRegVec(0) = testReads(i).regs.regs
+        seqs(0) = testReads(i).seq
+        if(testReads(i + 1).regs != null) 
+          alnRegVec(1) = testReads(i + 1).regs.regs
+        seqs(1) = testReads(i + 1).seq
+
+        seqsPairs(idx) = new Array[FASTQSingleNode](2)
+        seqsPairs(idx)(0) = seqs(0)
+        seqsPairs(idx)(1) = seqs(1)
+        alnRegVecPairs(idx) = new Array[Array[MemAlnRegType]](2)
+        alnRegVecPairs(idx)(0) = alnRegVec(0)
+        alnRegVecPairs(idx)(1) = alnRegVec(1)
+
+        idx += 1
+        i += 2
+        //if((i % 1000) == 0) println(i)
+      }
+
+      memSamPeGroup(opt, bns, pac, pes, testReads.size >> 1, numProcessed >> 1, seqsPairs, alnRegVecPairs)
     }
 
     testReads.foreach(r => samWriter.writeString((r.seq.sam)))
