@@ -15,6 +15,7 @@ import cs.ucla.edu.bwaspark.debug.DebugFlag._
 import cs.ucla.edu.bwaspark.fastq._
 import cs.ucla.edu.bwaspark.util.SWUtil._
 import cs.ucla.edu.bwaspark.FastMap.memMain
+import cs.ucla.edu.bwaspark.jni.HelloWorld
 
 import java.io.FileReader
 import java.io.BufferedReader
@@ -294,6 +295,10 @@ object BWAMEMSpark {
 
 // Testing: Pair-End SW
 //    var seqs = loadPairFASTQSeqs("/home/ytchen/genomics/data/HCC1954_1_20reads.fq", "/home/ytchen/genomics/data/HCC1954_2_20reads.fq", 80)
+    //System.loadLibrary("jniNative")
+    System.load("/home/ytchen/incubator/bwa-spark-0.2.3/target/jniNative.so")
+    val hello = new HelloWorld
+    hello.helloWorld
     memMain
     // Set up the flag to be single-end or pair-end
     
