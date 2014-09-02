@@ -11,6 +11,8 @@
 #include "bwamem.h"
 #include "kvec.h"
 
+//#define DEBUG
+
 /* Total bytes allocated */
 //static int total_allocated;
 /* Memory alignment is important */
@@ -43,28 +45,40 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
 
   // get Java classes  
   jclass MemAlnRegTypeClass = (*env)->FindClass(env, "cs/ucla/edu/bwaspark/datatype/MemAlnRegType");
+#ifdef DEBUG
   if(MemAlnRegTypeClass == NULL) fprintf(stderr, "[JNI/C] Class MemAlnRegType not found\n");
   else fprintf(stderr, "[JNI/C] Class MemAlnRegType found\n");
+#endif
 
   jclass MemOptTypeClass = (*env)->FindClass(env, "cs/ucla/edu/bwaspark/datatype/MemOptType");
+#ifdef DEBUG
   if(MemOptTypeClass == NULL) fprintf(stderr, "[JNI/C] Class MemOptType not found\n");
   else fprintf(stderr, "[JNI/C] Class MemOptType found\n");
+#endif
 
   jclass MemPeStatClass = (*env)->FindClass(env, "cs/ucla/edu/bwaspark/datatype/MemPeStat");
+#ifdef DEBUG
   if(MemPeStatClass == NULL) fprintf(stderr, "[JNI/C] Class MemPeStat not found\n");
   else fprintf(stderr, "[JNI/C] Class MemPeStat found\n");
+#endif
 
   jclass MateSWTypeClass = (*env)->FindClass(env, "cs/ucla/edu/bwaspark/jni/MateSWType");
+#ifdef DEBUG
   if(MateSWTypeClass == NULL) fprintf(stderr, "[JNI/C] Class MateSWType not found\n");
   else fprintf(stderr, "[JNI/C] Class MateSWType found\n");
+#endif
 
   jclass SeqSWTypeClass = (*env)->FindClass(env, "cs/ucla/edu/bwaspark/jni/SeqSWType");
+#ifdef DEBUG
   if(SeqSWTypeClass == NULL) fprintf(stderr, "[JNI/C] Class SeqSWType not found\n");
   else fprintf(stderr, "[JNI/C] Class SeqSWType found\n");
+#endif
 
   jclass RefSWTypeClass = (*env)->FindClass(env, "cs/ucla/edu/bwaspark/jni/RefSWType");
+#ifdef DEBUG
   if(RefSWTypeClass == NULL) fprintf(stderr, "[JNI/C] Class RefSWType not found\n");
   else fprintf(stderr, "[JNI/C] Class RefSWType found\n");
+#endif
 
   // get field IDs: MemOptType
   jfieldID aOptId = (*env)->GetFieldID(env, MemOptTypeClass, "a", "I");
@@ -175,6 +189,7 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
   for(i = 0; i < 25; i++)
     optC.mat[i] = (int8_t) matC[i]; 
   optC.n_threads = -1; // should not be used in JNI
+#ifdef DEBUG
   fprintf(stderr, "Opt: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %d %d %d %d %d %f %f %f %f %d %d %d\n", 
           optC.a, optC.b, optC.o_del, optC.e_del, optC.o_ins, optC.e_ins,
           optC.pen_unpaired, optC.pen_clip5, optC.pen_clip5, optC.w, optC.zdrop, 
@@ -184,6 +199,7 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
           optC.max_ins, optC.max_matesw);
   for(i = 0; i < 25; i++) fprintf(stderr, "%"PRId8" ", optC.mat[i]);
   fprintf(stderr, "\n");
+#endif
   (*env)->ReleaseByteArrayElements(env, *matPtr, matC, 0);
   
 
@@ -196,7 +212,9 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
     pesC[i].failed = (*env)->GetIntField(env, pesObj, failedPeStatId);
     pesC[i].avg = (*env)->GetDoubleField(env, pesObj, avgPeStatId);
     pesC[i].std = (*env)->GetDoubleField(env, pesObj, stdPeStatId);
+#ifdef DEBUG
     fprintf(stderr, "pes[%d]: %d %d %d %lf %lf\n", i, pesC[i].low, pesC[i].high, pesC[i].failed, pesC[i].avg, pesC[i].std);
+#endif
   }
 
   // get and print SeqSWArray
@@ -216,7 +234,9 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
   //fprintf(stderr, "[DEBUG] Total allocated: %d\n", total_allocated);
 
   jsize seqArrayLength = (*env)->GetArrayLength(env, inSeqSWArray);
+#ifdef DEBUG
   fprintf(stderr, "inSeqSWArray Length: %d\n", seqArrayLength);
+#endif
   for(i = 0; i < seqArrayLength; i++) {
     jobject seqObj = (*env)->GetObjectArrayElement(env, inSeqSWArray, i);
     jint readIdxInst = (*env)->GetIntField(env, seqObj, readIdxSeqSWId);
@@ -243,7 +263,9 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
 
   // get and print MateSWArray
   jsize mateSWArrayLength = (*env)->GetArrayLength(env, inMateSWArray);
+#ifdef DEBUG
   fprintf(stderr, "inMateSWArray Length: %d\n", mateSWArrayLength);
+#endif
 
   mem_alnreg_v** alnRegVecPairs = (mem_alnreg_v**) malloc(sizeof(mem_alnreg_v*) * groupSize);
   assert(alnRegVecPairs != NULL);
@@ -306,11 +328,15 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
 
   // get and print RefSWArray
   jsize refSWArrayLength = (*env)->GetArrayLength(env, inRefSWArray);
+#ifdef DEBUG
   fprintf(stderr, "inRefSWArray Length: %d\n", refSWArrayLength);
+#endif
 
   jint* refSizeArrayC = (*env)->GetIntArrayElements(env, refSizeArray, NULL);
   jsize refSizeArrayCLength = (*env)->GetArrayLength(env, refSizeArray);
+#ifdef DEBUG
   fprintf(stderr, "refSizeArrayCLength: %d\n", refSizeArrayCLength);
+#endif
 
   ref_t**** regRefArray = (ref_t****) malloc(sizeof(ref_t***) * groupSize);
   assert(regRefArray != NULL);
@@ -417,6 +443,7 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
     for(j = 0; j < lenArray[3]; j++)
       regRefArray[readIdxInst][pairIdxInst][regIdxInst][3].ref[j] = ref3[j];
 
+#ifdef DEBUG
     for(j = 0; j < 4; j++) 
       if(lenArray[j] <= 0) {
         fprintf(stderr, "[DEBUG] len: %ld, rBeg: %ld, rEnd: %ld\n", lenArray[j], rBegArray[j], rEndArray[j]);
@@ -424,6 +451,7 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
         if(regRefArray[readIdxInst][pairIdxInst][regIdxInst][j].ref == NULL) 
           fprintf(stderr, "[DEBUG] NULL Ptr\n");
       }
+#endif
       //else
         //fprintf(stderr, "%d %d %d %d %p\n", readIdxInst, pairIdxInst, regIdxInst, j, regRefArray[readIdxInst][pairIdxInst][regIdxInst][j].ref);
 
@@ -458,7 +486,6 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
 
     (*env)->ReleaseLongArrayElements(env, *rBegArrayPtr, rBegArray, 0);
     (*env)->ReleaseLongArrayElements(env, *rEndArrayPtr, rEndArray, 0);
-    (*env)->ReleaseLongArrayElements(env, *lenArrayPtr, lenArray, 0);
     if(lenArray[0] > 0)
       (*env)->ReleaseByteArrayElements(env, *ref0Ptr, ref0, 0);
     if(lenArray[1] > 0)
@@ -467,6 +494,7 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
       (*env)->ReleaseByteArrayElements(env, *ref2Ptr, ref2, 0);
     if(lenArray[3] > 0)
       (*env)->ReleaseByteArrayElements(env, *ref3Ptr, ref3, 0);
+    (*env)->ReleaseLongArrayElements(env, *lenArrayPtr, lenArray, 0);
 
     //if(i % 10000 == 0) fprintf(stderr, "%d\n", i);
   }
@@ -474,6 +502,7 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
   //fprintf(stderr, "[DEBUG] Total allocated: %d\n", total_allocated);
 
   // debugging
+#ifdef DEBUG
   long sum = 0;
   for(i = 0; i < groupSize; i++) {
     int j = 0;
@@ -482,6 +511,7 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
     }
   }
   fprintf(stderr, "Total alnReg # received: %ld\n", sum);
+#endif
 
   mem_group_matesw(&optC, (int64_t) pacLen, pesC, groupSize, seqLenPairs, seqsTransPairs, regRefArray, &alnRegVecPairs);
 
@@ -504,7 +534,9 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
       retArraySize += alnRegVecPairs[i][j].n;
   }
 
+#ifdef DEBUG
   fprintf(stderr, "[DEBUG] retArraySize: %d\n", retArraySize);
+#endif
 
   // Allocate the object array to be returned
   jobjectArray ret = (*env)->NewObjectArray(env, retArraySize, MateSWTypeClass, NULL);
@@ -540,15 +572,21 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
     }
   }
 
+#ifdef DEBUG
   fprintf(stderr, "[DEBUG] retArrayIdx: %d\n", retArrayIdx);
+#endif
 
   // free memory
+#ifdef DEBUG
   fprintf(stderr, "[DEBUG] Free seqLenPairs\n");
+#endif
   for(i = 0; i < groupSize; i++) free(seqLenPairs[i]); 
   free(seqLenPairs);
   //fprintf(stderr, "[DEBUG] Total allocated: %d\n", total_allocated);
 
+#ifdef DEBUG
   fprintf(stderr, "[DEBUG] Free seqsTransPairs\n");
+#endif
   for(i = 0; i < groupSize; i++) {
     int j = 0;
     for(j = 0; j < 2; j++) free(seqsTransPairs[i][j]);
@@ -557,8 +595,9 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
   free(seqsTransPairs);
   //fprintf(stderr, "[DEBUG] Total allocated: %d\n", total_allocated);
 
-
+#ifdef DEBUG
   fprintf(stderr, "[DEBUG] Free regRefArray\n");
+#endif
   for(i = 0; i < groupSize; i++) {
     int j = 0;
     for(j = 0; j < 2; j++) {
@@ -583,8 +622,9 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
   //fprintf(stderr, "Free: %p\n", regRefArray);
   //fprintf(stderr, "[DEBUG] Total allocated: %d\n", total_allocated);
 
-
+#ifdef DEBUG
   fprintf(stderr, "[DEBUG] Free alnRegVecPairs\n");
+#endif
   for(i = 0; i < groupSize; i++) {
     int j = 0;
     for(j = 0; j < 2; j++) {
@@ -594,8 +634,11 @@ JNIEXPORT jobjectArray JNICALL Java_cs_ucla_edu_bwaspark_jni_MateSWJNI_mateSWJNI
   }
   free(alnRegVecPairs);
   //fprintf(stderr, "[DEBUG] Total allocated: %d\n", total_allocated);
-
+#ifdef DEBUG
   fprintf(stderr, "[JNI] mem_group_matesw() complete\n");
+#endif
+
+  (*env)->ReleaseIntArrayElements(env, refSizeArray, refSizeArrayC, 0);
 
   return ret;
 }
