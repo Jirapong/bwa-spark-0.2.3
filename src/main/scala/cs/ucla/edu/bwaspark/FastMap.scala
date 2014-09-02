@@ -205,6 +205,7 @@ object FastMap {
     samWriter.writeString(bwaGenSAMHeader(bwaIdx.bns))
 
     do {
+      println("Read FASTQ")
       if((bwaMemOpt.flag & MEM_F_PE) > 0)
         seqs = loadBatchPairFASTQSeqs(reader1, reader2, batchNum)
       else      
@@ -378,6 +379,7 @@ object FastMap {
         //if((i % 1000) == 0) println(i)
       }
 
+      //memSamPeGroupJNI(opt, bns, pac, pes, testReads.size >> 1, numProcessed >> 1, seqsPairs, alnRegVecPairs)
       memSamPeGroup(opt, bns, pac, pes, testReads.size >> 1, numProcessed >> 1, seqsPairs, alnRegVecPairs)
     }
 
@@ -399,5 +401,188 @@ object FastMap {
     println("@testMemSamPe")
     testMemSamPe("/home/ytchen/bwa/bwa-0.7.8/memsampe.input", opt, bns, pac, pes)
 */
+  }
+
+  def memMainJNI() {
+
+    if(bwaSetReadGroup("@RG\tID:HCC1954\tLB:HCC1954\tSM:HCC1954")) {
+      println("Read line: " + readGroupLine)
+      println("Read Group ID: " + bwaReadGroupID)
+    }
+    else println("Error on reading header")
+
+    //loading index files
+    println("Load Index Files")
+    val bwaIdx = new BWAIdxType
+    val prefix = "/home/hadoopmaster/genomics/ReferenceMetadata/human_g1k_v37.fasta"
+    bwaIdx.load(prefix, 0)
+
+    //loading BWA MEM options
+    println("Load BWA-MEM options")
+    val bwaMemOpt = new MemOptType
+    bwaMemOpt.load
+
+    //loading reads
+    println("Load FASTQ files")
+
+    // set the single/pair end mode
+    bwaMemOpt.flag |= MEM_F_PE
+    bwaMemOpt.flag |= MEM_F_ALL
+    bwaMemOpt.flag |= MEM_F_NO_MULTI
+
+    // Set readNum to the total number of reads in JNI mode
+    //var readNum = 5000000
+    var readNum = 1000000
+    var batchNum = 99010
+    var n = 0
+    var numProcessed = 0
+    var seqs: Array[FASTQSingleNode] = new Array[FASTQSingleNode](0)
+    var reader1: BufferedReader = null
+    var reader2: BufferedReader = null
+
+    if((bwaMemOpt.flag & MEM_F_PE) > 0) {
+      //reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq"))
+      //reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_2_10Mreads.fq"))
+      reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/JNI_1_2M.fq"))
+      reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/JNI_2_2M.fq"))
+    }
+    else
+      reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_20reads.fq"))      
+
+    val samWriter = new SAMWriter("test.sam")
+    samWriter.init
+    samWriter.writeString(bwaGenSAMHeader(bwaIdx.bns))
+
+    println("Read FASTQ")
+    if((bwaMemOpt.flag & MEM_F_PE) > 0)
+      seqs = loadBatchPairFASTQSeqs(reader1, reader2, readNum)
+    else      
+      seqs = loadBatchFASTQSeqs(reader1, readNum / 2)
+
+    do {
+      if(readNum - numProcessed >= batchNum) n = batchNum
+      else n = readNum - numProcessed
+
+      var seqsInBatch = new Array[FASTQSingleNode](n)
+      
+      var bpNum: Long = 0
+      var i = 0 
+      println("[JNI] Read Starting Index: " + (i + numProcessed)); 
+      while(i < n) {
+        bpNum += seqs(i).seqLen
+        seqsInBatch(i) = seqs(i + numProcessed)
+        i += 1
+      }
+ 
+      println("read " + n + " sequences (" + bpNum + " bp)")
+
+      memProcessSeqsJNI(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, numProcessed, n, seqsInBatch, null, samWriter)
+      numProcessed += n
+      
+      println("Num processed: " + numProcessed)
+
+    } while(n == batchNum)
+    
+    if((bwaMemOpt.flag & MEM_F_PE) > 0) {
+      reader1.close
+      reader2.close
+    }
+    else
+      reader1.close
+    samWriter.close
+  } 
+
+  def memProcessSeqsJNI(opt: MemOptType, bwt: BWTType, bns: BNTSeqType, pac: Array[Byte], numProcessed: Long, n: Int, seqs: Array[FASTQSingleNode], pes0: Array[MemPeStat], samWriter: SAMWriter) {
+
+    var pes: Array[MemPeStat] = new Array[MemPeStat](4)   
+    var j = 0
+    while(j < 4) {
+      pes(j) = new MemPeStat
+      j += 1
+    }
+
+
+    // worker1
+    // find mapping positions
+    println("@Worker1")
+    var i = 0
+    var regsAllReads: Array[MemAlnRegArrayType] = new Array[MemAlnRegArrayType](seqs.length)
+
+    if((opt.flag & MEM_F_PE) == 0) {
+      while(i < seqs.length) {
+        regsAllReads(i) = bwaMemWorker1(opt, bwt, bns, pac, seqs(i).seqLen, seqs(i).seq)
+        i += 1
+        if((i % 10000) == 0) println(i)
+      }
+    }
+    else {
+      while(i < seqs.length) {
+        regsAllReads(i) = bwaMemWorker1(opt, bwt, bns, pac, seqs(i).seqLen, seqs(i).seq)
+        i += 1
+        regsAllReads(i) = bwaMemWorker1(opt, bwt, bns, pac, seqs(i).seqLen, seqs(i).seq)
+        i += 1
+
+        if((i % 10000) == 0) println(i)
+      }
+    }
+
+    var testReads = new Array[testRead](seqs.length)
+    i = 0
+    while(i < seqs.length) {
+      var read = new testRead
+      read.seq = seqs(i)
+      read.regs = regsAllReads(i)
+      testReads(i) = read
+      i += 1
+    }
+
+   
+    println("@MemPeStat")
+    if((opt.flag & MEM_F_PE) > 0) { // infer insert sizes if not provided
+      if(pes0 != null) // if pes0 != NULL, set the insert-size distribution as pes0
+        pes = pes0
+      else // otherwise, infer the insert size distribution from data
+        memPeStat(opt, bns.l_pac, n, regsAllReads, pes)
+    }    
+
+    println("@Worker2")
+    i = 0
+    if((opt.flag & MEM_F_PE) == 0) {
+      testReads.foreach(read => {
+        bwaMemWorker2(opt, read.regs.regs, bns, pac, read.seq, 0) 
+        i += 1
+        if((i % 10000) == 0) println(i) } )
+    }
+    else {
+      var seqsPairs: Array[Array[FASTQSingleNode]] = new Array[Array[FASTQSingleNode]](testReads.size >> 1)
+      var alnRegVecPairs: Array[Array[Array[MemAlnRegType]]] = new Array[Array[Array[MemAlnRegType]]](testReads.size >> 1)
+      var idx = 0
+
+      while(i < testReads.size) {
+        var alnRegVec: Array[Array[MemAlnRegType]] = new Array[Array[MemAlnRegType]](2)
+        var seqs: Array[FASTQSingleNode] = new Array[FASTQSingleNode](2)
+      
+        if(testReads(i).regs != null) 
+          alnRegVec(0) = testReads(i).regs.regs
+        seqs(0) = testReads(i).seq
+        if(testReads(i + 1).regs != null) 
+          alnRegVec(1) = testReads(i + 1).regs.regs
+        seqs(1) = testReads(i + 1).seq
+
+        seqsPairs(idx) = new Array[FASTQSingleNode](2)
+        seqsPairs(idx)(0) = seqs(0)
+        seqsPairs(idx)(1) = seqs(1)
+        alnRegVecPairs(idx) = new Array[Array[MemAlnRegType]](2)
+        alnRegVecPairs(idx)(0) = alnRegVec(0)
+        alnRegVecPairs(idx)(1) = alnRegVec(1)
+
+        idx += 1
+        i += 2
+      }
+
+      memSamPeGroupJNI(opt, bns, pac, pes, testReads.size >> 1, numProcessed >> 1, seqsPairs, alnRegVecPairs)
+    }
+
+    //testReads.foreach(r => samWriter.writeString((r.seq.sam)))
   }
 } 

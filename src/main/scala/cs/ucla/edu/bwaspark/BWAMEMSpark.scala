@@ -14,7 +14,7 @@ import cs.ucla.edu.bwaspark.sam.SAMWriter
 import cs.ucla.edu.bwaspark.debug.DebugFlag._
 import cs.ucla.edu.bwaspark.fastq._
 import cs.ucla.edu.bwaspark.util.SWUtil._
-import cs.ucla.edu.bwaspark.FastMap.memMain
+import cs.ucla.edu.bwaspark.FastMap.{memMain,memMainJNI}
 import cs.ucla.edu.bwaspark.jni.HelloWorld
 
 import java.io.FileReader
@@ -299,9 +299,8 @@ object BWAMEMSpark {
     System.load("/home/ytchen/incubator/bwa-spark-0.2.3/target/jniNative.so")
     val hello = new HelloWorld
     hello.helloWorld
-    memMain
-    // Set up the flag to be single-end or pair-end
-    
+    //memMain
+    memMainJNI
 
 /*
     val reader = new BufferedReader(new FileReader("/home/ytchen/bwa/bwa-0.7.8/sw600.input"))

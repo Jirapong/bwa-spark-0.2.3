@@ -145,13 +145,13 @@ int mem_group_matesw(const mem_opt_t *opt, int64_t pacLen, const mem_pestat_t pe
         //fprintf(stderr, "k = %d, i = %d, size = %d\n", k, i, (*alnRegVecPairs)[k][!i].n);
       }
 */
-      //if((k % 1000) == 0) fprintf(stderr, "[C] Mate-SW: %d\n", k);
+      if((k % 10000) == 0) fprintf(stderr, "[C] Mate-SW: %d\n", k);
     }
   }
 }
 
 // for JNI
-int mem_matesw_precompute(const mem_opt_t *opt, int64_t l_pac, const mem_pestat_t pes[4], const mem_alnreg_t *a, int l_ms, const uint8_t *ms, mem_alnreg_v *ma, ref_t ref[4])
+int mem_matesw_precompute(const mem_opt_t *opt, int64_t l_pac, const mem_pestat_t pes[4], const mem_alnreg_t *a, int l_ms, const uint8_t *ms, mem_alnreg_v *ma, const ref_t* ref)
 {
 	extern int mem_sort_and_dedup(int n, mem_alnreg_t *a, float mask_level_redun);
 	int i, r, skip[4], n = 0;

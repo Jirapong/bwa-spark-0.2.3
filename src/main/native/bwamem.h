@@ -84,7 +84,12 @@ typedef struct { // This struct is only used for the convenience of API.
 typedef struct {
   int64_t rBeg, rEnd, len;
   uint8_t* ref;
+  //uint8_t ref[8000];
 } ref_t;
+
+typedef struct {
+  ref_t refArray[4];
+} ref_array_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -101,6 +106,7 @@ extern "C" {
   // Added by Yu-Ting Chen
   // for JNI
   int mem_group_matesw(const mem_opt_t *opt, int64_t pacLen, const mem_pestat_t pes[4], int groupSize, int** seqLenPairs, uint8_t*** seqsTransPairs, ref_t**** regRefArray, mem_alnreg_v*** alnRegVecPairs);
+  //int mem_group_matesw(const mem_opt_t *opt, int64_t pacLen, const mem_pestat_t pes[4], int groupSize, int** seqLenPairs, uint8_t*** seqsTransPairs, ref_array_t*** regRefArray, mem_alnreg_v*** alnRegVecPairs);
   //int mem_group_matesw(const mem_opt_t *opt, int64_t pacLen, const mem_pestat_t pes[4], int groupSize, int** seqLenPairs, uint8_t*** seqsTransPairs, ref_t**** regRefArray, mem_alnreg_v*** alnRegVecPairs, mem_alnreg_v*** alnRegTmpVecPairs);
 
 	/**

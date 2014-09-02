@@ -54,7 +54,7 @@ object BNTSeqUtil {
         }
       }
     }
-    else
+    else   // if bridging the forward-reverse boundary, return nothing
       rLen = 0
 
     (seq, rLen)//return a Tuple

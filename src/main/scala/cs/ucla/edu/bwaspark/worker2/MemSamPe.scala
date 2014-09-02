@@ -234,7 +234,11 @@ object MemSamPe {
       refArray(r).len = ret._2
       refArray(r).rBeg = rBeg
       refArray(r).rEnd = rEnd
-      
+     
+      // debug
+      if(refArray(r).rEnd - refArray(r).rBeg != refArray(r).len) 
+        println("[Java DEBUG] len " + refArray(r).len + ", rBeg " + refArray(r).rBeg + ", rEnd " + refArray(r).rEnd)
+ 
       r += 1
     }
  
@@ -419,7 +423,8 @@ object MemSamPe {
  
     //println("[1] " + skip(0) + " " + skip(1) + " " + skip(2) + " " + skip(3))
     if(skip(0) + skip(1) + skip(2) + skip(3) == 4) (0, mateRegs)   // consistent pair exist; no need to perform SW
-
+ 
+    // NOTE!!!: performance can be further optimized to avoid the copy
     if(mateRegs != null) {
       i = 0
       while(i < mateRegs.size) {
@@ -985,10 +990,12 @@ object MemSamPe {
         if(seqs(0).name != seqs(1).name) println("[Error] paired reads have different names: " + seqs(0).name + ", " + seqs(1).name)
       }
 
+      if((k % 10000) == 0) println(k)
       k += 1
     }
 
   }
+
 
   private def memSamPeJNIPrep(groupSize: Int, maxMatesw: Int, seqsPairs: Array[Array[FASTQSingleNode]], seqsTransPairs: Array[Array[Array[Byte]]], refArray: Array[Array[Array[Array[RefType]]]], 
     alnRegArray: Array[Array[Vector[MemAlnRegType]]], alnRegVecPairs: Array[Array[Array[MemAlnRegType]]]): (Array[MateSWType], Array[SeqSWType], Array[RefSWType], Array[Int]) = {
@@ -1005,7 +1012,7 @@ object MemSamPe {
         var seq = new SeqSWType
         seq.readIdx = k
         seq.pairIdx = i
-        seq.seq = seqsPairs(k)(i)
+        seq.seqLength = seqsPairs(k)(i).seqLen
         seq.seqTrans = seqsTransPairs(k)(i)
         seqsSWVec = seqsSWVec :+ seq
 
@@ -1028,7 +1035,8 @@ object MemSamPe {
         }
 
         j = 0
-        while(j < alnRegArray(k)(i).size && j < maxMatesw) {
+        //while(j < alnRegArray(k)(i).size && j < maxMatesw) {
+        while(j < refSWArraySize(k * 2 + i)) {
           var refSW = new RefSWType
           refSW.readIdx = k
           refSW.pairIdx = i
@@ -1086,16 +1094,19 @@ object MemSamPe {
     }
 
     k = 0
+    println("mateSWArray size: " + inArray.size)
     while(k < inArray.size) {
       outVec(inArray(k).readIdx)(inArray(k).pairIdx) = outVec(inArray(k).readIdx)(inArray(k).pairIdx) :+ inArray(k).alnReg
       k += 1
     }
 
     var outArray: Array[Array[Array[MemAlnRegType]]] = new Array[Array[Array[MemAlnRegType]]](groupSize)
+    k = 0
     while(k < groupSize) {
       outArray(k) = new Array[Array[MemAlnRegType]](2)
       var i = 0
       while(i < 2) {
+        outArray(k)(i) = new Array[MemAlnRegType](0)
         outArray(k)(i) = outVec(k)(i).toArray
         i += 1
       }
@@ -1105,7 +1116,7 @@ object MemSamPe {
     outArray
   }
 
-  def memSamPeGroup(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], pes: Array[MemPeStat], groupSize: Int, id: Long, 
+  def memSamPeGroupJNI(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], pes: Array[MemPeStat], groupSize: Int, id: Long, 
                     seqsPairs: Array[Array[FASTQSingleNode]], alnRegVecPairs: Array[Array[Array[MemAlnRegType]]]) {
     var seqsTransPairs: Array[Array[Array[Byte]]] = new Array[Array[Array[Byte]]](groupSize)
 
@@ -1121,6 +1132,7 @@ object MemSamPe {
     val prepRet = memSamPeGroupPrepare(opt, bns, pac, pes, groupSize, alnRegVecPairs, seqsPairs)
     val refArray = prepRet._1
     val alnRegArray = prepRet._2  
+
     // test JNI, pass array of objects
     println("JNI data preparation")
     val ret = memSamPeJNIPrep(groupSize, opt.maxMatesw, seqsPairs, seqsTransPairs, refArray, alnRegArray, alnRegVecPairs)
@@ -1133,11 +1145,13 @@ object MemSamPe {
     val jni = new MateSWJNI
     val retMateSWArray = jni.mateSWJNI(opt, bns.l_pac, pes, groupSize, seqsSWArray, mateSWArray, refSWArray, refSWArraySize)
 
+/*
+    println("mateSWArrayToAlnRegPairArray");
     val alnRegVecPairsJNI = mateSWArrayToAlnRegPairArray(groupSize, retMateSWArray)
-    memSamPeGroupRest(opt, bns,  pac, pes, groupSize, id, seqsPairs, seqsTransPairs, alnRegVecPairsJNI)
 
-//    println("memSamPeGroupMateSW")
-//    val n = memSamPeGroupMateSW(opt, bns.l_pac, pes, groupSize, seqsPairs, seqsTransPairs, prepRet._1, alnRegVecPairs, prepRet._2)
+    println("memSamPeGroupRest")
+    memSamPeGroupRest(opt, bns,  pac, pes, groupSize, id, seqsPairs, seqsTransPairs, alnRegVecPairsJNI)
+*/
 
 /*
     // debugging
@@ -1156,11 +1170,51 @@ object MemSamPe {
     }
 */
 
-//    println("memSamRest")
-//    memSamPeGroupRest(opt, bns,  pac, pes, groupSize, id, seqsPairs, seqsTransPairs, alnRegVecPairs)
-    //println("n: " + n)
+    println("memSamPeGroup done in this batch!")
   }
 
+
+  def memSamPeGroup(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], pes: Array[MemPeStat], groupSize: Int, id: Long, 
+                    seqsPairs: Array[Array[FASTQSingleNode]], alnRegVecPairs: Array[Array[Array[MemAlnRegType]]]) {
+    var seqsTransPairs: Array[Array[Array[Byte]]] = new Array[Array[Array[Byte]]](groupSize)
+
+    var k = 0
+    while(k < groupSize) {
+      seqsTransPairs(k) = new Array[Array[Byte]](2)
+      seqsTransPairs(k)(0) = seqsPairs(k)(0).seq.toCharArray.map(ele => locusEncode(ele))
+      seqsTransPairs(k)(1) = seqsPairs(k)(1).seq.toCharArray.map(ele => locusEncode(ele))
+      k += 1
+    }
+
+    println("memSamPeGroupPrepare")
+    val prepRet = memSamPeGroupPrepare(opt, bns, pac, pes, groupSize, alnRegVecPairs, seqsPairs)
+/*
+    val refArray = prepRet._1
+    val alnRegArray = prepRet._2  
+    // test JNI, pass array of objects
+    println("JNI data preparation")
+    val ret = memSamPeJNIPrep(groupSize, opt.maxMatesw, seqsPairs, seqsTransPairs, refArray, alnRegArray, alnRegVecPairs)
+    
+    println("Call JNI")
+    val mateSWArray = ret._1
+    val seqsSWArray = ret._2
+    val refSWArray = ret._3
+    val refSWArraySize = ret._4
+    val jni = new MateSWJNI
+    val retMateSWArray = jni.mateSWJNI(opt, bns.l_pac, pes, groupSize, seqsSWArray, mateSWArray, refSWArray, refSWArraySize)
+
+    val alnRegVecPairsJNI = mateSWArrayToAlnRegPairArray(groupSize, retMateSWArray)
+
+    println("memSamPeGroupRest")
+    memSamPeGroupRest(opt, bns,  pac, pes, groupSize, id, seqsPairs, seqsTransPairs, alnRegVecPairsJNI)
+*/
+    println("memSamPeGroupMateSW")
+    val n = memSamPeGroupMateSW(opt, bns.l_pac, pes, groupSize, seqsPairs, seqsTransPairs, prepRet._1, alnRegVecPairs, prepRet._2)
+    println("memSamRest")
+    memSamPeGroupRest(opt, bns,  pac, pes, groupSize, id, seqsPairs, seqsTransPairs, alnRegVecPairs)
+    println("n: " + n)
+    println("memSamPeGroup done in this batch!")
+  }
 
   def memSamPe(opt: MemOptType, bns: BNTSeqType, pac: Array[Byte], pes: Array[MemPeStat], id: Long, 
                seqs: Array[FASTQSingleNode], alnRegVec: Array[Array[MemAlnRegType]]): Int = {
