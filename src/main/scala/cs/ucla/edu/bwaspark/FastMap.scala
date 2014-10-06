@@ -443,8 +443,10 @@ object FastMap {
     if((bwaMemOpt.flag & MEM_F_PE) > 0) {
       //reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq"))
       //reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_2_10Mreads.fq"))
-      reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/JNI_1_2M.fq"))
-      reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/JNI_2_2M.fq"))
+      reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_1Mreads.fq"))
+      reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_2_1Mreads.fq"))
+      //reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/JNI_1_2M.fq"))
+      //reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/JNI_2_2M.fq"))
     }
     else
       reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_20reads.fq"))      
@@ -583,6 +585,6 @@ object FastMap {
       memSamPeGroupJNI(opt, bns, pac, pes, testReads.size >> 1, numProcessed >> 1, seqsPairs, alnRegVecPairs)
     }
 
-    //testReads.foreach(r => samWriter.writeString((r.seq.sam)))
+    testReads.foreach(r => samWriter.writeString((r.seq.sam)))
   }
 } 

@@ -1145,13 +1145,13 @@ object MemSamPe {
     val jni = new MateSWJNI
     val retMateSWArray = jni.mateSWJNI(opt, bns.l_pac, pes, groupSize, seqsSWArray, mateSWArray, refSWArray, refSWArraySize)
 
-/*
+
     println("mateSWArrayToAlnRegPairArray");
     val alnRegVecPairsJNI = mateSWArrayToAlnRegPairArray(groupSize, retMateSWArray)
 
     println("memSamPeGroupRest")
     memSamPeGroupRest(opt, bns,  pac, pes, groupSize, id, seqsPairs, seqsTransPairs, alnRegVecPairsJNI)
-*/
+
 
 /*
     // debugging
