@@ -227,7 +227,7 @@ object FastMap {
       memProcessSeqs(bwaMemOpt, bwaIdx.bwt, bwaIdx.bns, bwaIdx.pac, numProcessed, n, seqs, null, samWriter)
       numProcessed += n
       
-      //println("Num processed: " + numProcessed)
+      println("Num processed: " + numProcessed)
 
     } while(seqs.size == batchNum)
     

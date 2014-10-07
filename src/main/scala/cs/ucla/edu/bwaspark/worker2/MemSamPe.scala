@@ -127,7 +127,14 @@ object MemSamPe {
     while(d < 4) {
       val qInit: Vector[Int] = iSize(d)
       if(qInit.size < MIN_DIR_CNT) {
-        println("skip orientation as there are not enough pairs")
+        if(d == 0)
+          println("skip orientation FF as there are not enough pairs")
+        else if(d == 1)
+          println("skip orientation FR as there are not enough pairs")
+        else if(d == 2)
+          println("skip orientation RF as there are not enough pairs")
+        else if(d == 3)
+          println("skip orientation RR as there are not enough pairs")          
         pes(d).failed = 1
         d += 1
       } 
@@ -188,7 +195,14 @@ object MemSamPe {
     while(d < 4) {
       if(pes(d).failed == 0 && iSize(d).size < max * MIN_DIR_RATIO) {
         pes(d).failed = 1
-        println("skip orientation")
+        if(d == 0)
+          println("skip orientation FF")
+        else if(d == 1)
+          println("skip orientation FR")
+        else if(d == 2)
+          println("skip orientation RF")
+        else if(d == 3)
+          println("skip orientation RR")          
       }     
 
       d += 1
@@ -200,45 +214,53 @@ object MemSamPe {
 
     var r = 0
     while(r < 4) {
-      var rBeg: Long = -1
-      var rEnd: Long = -1
-      var len: Long = 0
+      // Check if the direction is skipped
+      if(pes(r).failed == 0) {
+        var rBeg: Long = -1
+        var rEnd: Long = -1
+        var len: Long = 0
 
-      var isRev = 0
-      if((r >> 1) != (r & 1)) isRev = 1   // whether to reverse complement the mate
+        var isRev = 0
+        if((r >> 1) != (r & 1)) isRev = 1   // whether to reverse complement the mate
 
-      var isLarger = 1
-      if((r >> 1) > 0) isLarger = 0   // whether the mate has larger coordinate
+        var isLarger = 1
+        if((r >> 1) > 0) isLarger = 0   // whether the mate has larger coordinate
 
-      if(isRev == 0) {
-        if(isLarger > 0) rBeg = reg.rBeg + pes(r).low
-        else rBeg = reg.rBeg - pes(r).high
+        if(isRev == 0) {
+          if(isLarger > 0) rBeg = reg.rBeg + pes(r).low
+          else rBeg = reg.rBeg - pes(r).high
 
-        if(isLarger > 0) rEnd = reg.rBeg + pes(r).high + mateSeqLen // if on the same strand, end position should be larger to make room for the seq length
-        else rEnd = reg.rBeg - pes(r).low + mateSeqLen
-      }
-      else {
-        if(isLarger > 0) rBeg = reg.rBeg + pes(r).low - mateSeqLen // similarly on opposite strands
-        else rBeg = reg.rBeg - pes(r).high - mateSeqLen
+          if(isLarger > 0) rEnd = reg.rBeg + pes(r).high + mateSeqLen // if on the same strand, end position should be larger to make room for the seq length
+          else rEnd = reg.rBeg - pes(r).low + mateSeqLen
+        }
+        else {
+          if(isLarger > 0) rBeg = reg.rBeg + pes(r).low - mateSeqLen // similarly on opposite strands
+          else rBeg = reg.rBeg - pes(r).high - mateSeqLen
 
-        if(isLarger > 0) rEnd = reg.rBeg + pes(r).high
-        else rEnd = reg.rBeg - pes(r).low
-      }
+          if(isLarger > 0) rEnd = reg.rBeg + pes(r).high
+          else rEnd = reg.rBeg - pes(r).low
+        }
 
-      if(rBeg < 0) rBeg = 0
-      if(rEnd > (pacLen << 1)) rEnd = pacLen << 1
+        if(rBeg < 0) rBeg = 0
+        if(rEnd > (pacLen << 1)) rEnd = pacLen << 1
 
-      val ret = bnsGetSeq(pacLen, pac, rBeg, rEnd)
-      refArray(r) = new RefType
-      refArray(r).ref = ret._1
-      refArray(r).len = ret._2
-      refArray(r).rBeg = rBeg
-      refArray(r).rEnd = rEnd
+        val ret = bnsGetSeq(pacLen, pac, rBeg, rEnd)
+        refArray(r) = new RefType
+        refArray(r).ref = ret._1
+        refArray(r).len = ret._2
+        refArray(r).rBeg = rBeg
+        refArray(r).rEnd = rEnd
      
-      // debug
-      if(refArray(r).rEnd - refArray(r).rBeg != refArray(r).len) 
-        println("[Java DEBUG] len " + refArray(r).len + ", rBeg " + refArray(r).rBeg + ", rEnd " + refArray(r).rEnd)
- 
+        // debug
+        if(refArray(r).rEnd - refArray(r).rBeg != refArray(r).len) 
+          println("[Java DEBUG] len " + refArray(r).len + ", rBeg " + refArray(r).rBeg + ", rEnd " + refArray(r).rEnd)
+      }
+      // This direction is skipped
+      else {
+        refArray(r) = new RefType
+        refArray(r).ref = null
+      }
+
       r += 1
     }
  
@@ -1080,6 +1102,179 @@ object MemSamPe {
    (mateSWArray, seqsSWArray, refSWArray, refSWArraySize)
   }
 
+
+  private def getAlnRegRefJNI(pacLen: Long, pac: Array[Byte], pes: Array[MemPeStat], reg: MemAlnRegType, mateSeqLen: Int, readIdx: Int, pairIdx: Int, regIdx: Int): RefSWType = {
+    var refByteArray = new Array[Array[Byte]](4)
+    var refSW = new RefSWType
+    refSW.readIdx = readIdx
+    refSW.pairIdx = pairIdx
+    refSW.regIdx = regIdx
+    refSW.rBegArray = new Array[Long](4)
+    refSW.rEndArray = new Array[Long](4)
+    refSW.lenArray = new Array[Long](4)
+
+    var r = 0
+    while(r < 4) {
+      // Check if the direction is skipped
+      if(pes(r).failed == 0) {
+        var rBeg: Long = -1
+        var rEnd: Long = -1
+        var len: Long = 0
+
+        var isRev = 0
+        if((r >> 1) != (r & 1)) isRev = 1   // whether to reverse complement the mate
+
+        var isLarger = 1
+        if((r >> 1) > 0) isLarger = 0   // whether the mate has larger coordinate
+
+        if(isRev == 0) {
+          if(isLarger > 0) rBeg = reg.rBeg + pes(r).low
+          else rBeg = reg.rBeg - pes(r).high
+
+          if(isLarger > 0) rEnd = reg.rBeg + pes(r).high + mateSeqLen // if on the same strand, end position should be larger to make room for the seq length
+          else rEnd = reg.rBeg - pes(r).low + mateSeqLen
+        }
+        else {
+          if(isLarger > 0) rBeg = reg.rBeg + pes(r).low - mateSeqLen // similarly on opposite strands
+          else rBeg = reg.rBeg - pes(r).high - mateSeqLen
+
+          if(isLarger > 0) rEnd = reg.rBeg + pes(r).high
+          else rEnd = reg.rBeg - pes(r).low
+        }
+
+        if(rBeg < 0) rBeg = 0
+        if(rEnd > (pacLen << 1)) rEnd = pacLen << 1
+
+        val ret = bnsGetSeq(pacLen, pac, rBeg, rEnd)
+        refByteArray(r) = ret._1
+        refSW.lenArray(r) = ret._2
+        refSW.rBegArray(r) = rBeg
+        refSW.rEndArray(r) = rEnd
+     
+        // debug
+        if(refSW.rEndArray(r) - refSW.rBegArray(r) != refSW.lenArray(r)) 
+          println("[Java DEBUG] len " + refSW.lenArray(r) + ", rBeg " + refSW.rBegArray(r) + ", rEnd " + refSW.rEndArray(r))
+      }
+      // This direction is skipped
+      else {
+        refByteArray(r) = null 
+        refSW.lenArray(r) = 0
+        refSW.rBegArray(r) = -1
+        refSW.rEndArray(r) = -1
+      }
+
+      r += 1
+    }
+ 
+    refSW.ref0 = refByteArray(0)
+    refSW.ref1 = refByteArray(1)
+    refSW.ref2 = refByteArray(2)
+    refSW.ref3 = refByteArray(3)
+    refSW
+  }
+
+
+  private def memSamPeGroupJNIPrepare(opt: MemOptType, bns: BNTSeqType,  pac: Array[Byte], pes: Array[MemPeStat], groupSize: Int,
+    seqsPairs: Array[Array[FASTQSingleNode]], seqsTransPairs: Array[Array[Array[Byte]]], alnRegVecPairs: Array[Array[Array[MemAlnRegType]]] 
+    ): (Array[MateSWType], Array[SeqSWType], Array[RefSWType], Array[Int]) = {
+
+    var mateSWVec: Vector[MateSWType] = scala.collection.immutable.Vector.empty
+    var seqsSWVec: Vector[SeqSWType] = scala.collection.immutable.Vector.empty
+    var refSWVec: Vector[RefSWType] = scala.collection.immutable.Vector.empty
+    var refSWArraySize: Array[Int] = new Array[Int](groupSize * 2)
+
+    var k = 0
+    if((opt.flag & MEM_F_NO_RESCUE) == 0) { 
+
+      while(k < groupSize) {
+
+        var i = 0
+        var alnRegTmpVec = new Array[Vector[MemAlnRegType]](2)
+        alnRegTmpVec(0) = scala.collection.immutable.Vector.empty
+        alnRegTmpVec(1) = scala.collection.immutable.Vector.empty
+
+        while(i < 2) {
+          if(alnRegVecPairs(k)(i) != null) {
+            var j = 0
+            while(j < alnRegVecPairs(k)(i).size) {
+              if(alnRegVecPairs(k)(i)(j).score >= alnRegVecPairs(k)(i)(0).score - opt.penUnpaired)
+                alnRegTmpVec(i) = alnRegTmpVec(i) :+ alnRegVecPairs(k)(i)(j)
+              j += 1
+            }
+          }
+
+          i += 1
+        }
+
+        i = 0
+        while(i < 2) {
+          var j = 0
+          while(j < alnRegTmpVec(i).size && j < opt.maxMatesw) {
+            var iBar = 0
+            if(i == 0) iBar = 1
+            var refSW = new RefSWType
+            refSW = getAlnRegRefJNI(bns.l_pac, pac, pes, alnRegTmpVec(i)(j), seqsPairs(k)(iBar).seqLen, k, i, j)
+            refSWVec = refSWVec :+ refSW
+            //regRefArray(k)(i)(j) = getAlnRegRef(bns.l_pac, pac, pes, alnRegTmpVec(i)(j), seqsPairs(k)(iBar).seqLen)
+            j += 1
+          }
+
+          // Calculate the reference array size
+          if(alnRegTmpVec(i).size > opt.maxMatesw)
+            refSWArraySize(k * 2 + i) = opt.maxMatesw
+          else
+            refSWArraySize(k * 2 + i) = alnRegTmpVec(i).size
+
+          i += 1
+        }
+
+        k += 1
+      }
+
+    }
+
+
+		k = 0
+    while(k < groupSize) {
+      var i = 0
+      while(i < 2) {
+        var seq = new SeqSWType
+        seq.readIdx = k
+        seq.pairIdx = i
+        seq.seqLength = seqsPairs(k)(i).seqLen
+        seq.seqTrans = seqsTransPairs(k)(i)
+        seqsSWVec = seqsSWVec :+ seq
+
+        var j = 0
+        if(alnRegVecPairs(k)(i) != null) {
+          while(j < alnRegVecPairs(k)(i).size) {
+            var mateSW = new MateSWType
+            mateSW.readIdx = k
+            mateSW.pairIdx = i
+            mateSW.regIdx = j
+            mateSW.alnReg = alnRegVecPairs(k)(i)(j)
+            mateSWVec = mateSWVec :+ mateSW
+            j += 1
+          }
+        }
+
+        i += 1
+      }
+      
+      k += 1
+    }
+
+    val mateSWArray = mateSWVec.toArray
+    println("mateSWArray size: " + mateSWArray.size)
+    val seqsSWArray = seqsSWVec.toArray
+    println("seqsSWArray size: " + seqsSWArray.size)
+    val refSWArray = refSWVec.toArray
+    println("refSWArray size: " + refSWArray.size)
+
+    (mateSWArray, seqsSWArray, refSWArray, refSWArraySize)
+  }
+
+
   private def mateSWArrayToAlnRegPairArray(groupSize: Int, inArray: Array[MateSWType]): Array[Array[Array[MemAlnRegType]]] = {
     var outVec: Array[Array[Vector[MemAlnRegType]]] = new Array[Array[Vector[MemAlnRegType]]](groupSize)
     var k = 0
@@ -1127,7 +1322,7 @@ object MemSamPe {
       seqsTransPairs(k)(1) = seqsPairs(k)(1).seq.toCharArray.map(ele => locusEncode(ele))
       k += 1
     }
-
+/*
     println("memSamPeGroupPrepare")
     val prepRet = memSamPeGroupPrepare(opt, bns, pac, pes, groupSize, alnRegVecPairs, seqsPairs)
     val refArray = prepRet._1
@@ -1136,7 +1331,10 @@ object MemSamPe {
     // test JNI, pass array of objects
     println("JNI data preparation")
     val ret = memSamPeJNIPrep(groupSize, opt.maxMatesw, seqsPairs, seqsTransPairs, refArray, alnRegArray, alnRegVecPairs)
-    
+*/   
+    println("[New] memSamPeGroupJNIPrepare")
+    val ret = memSamPeGroupJNIPrepare(opt, bns,  pac, pes, groupSize, seqsPairs, seqsTransPairs, alnRegVecPairs)
+
     println("Call JNI")
     val mateSWArray = ret._1
     val seqsSWArray = ret._2
