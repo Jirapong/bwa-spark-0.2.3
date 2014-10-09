@@ -433,7 +433,9 @@ object FastMap {
     // Set readNum to the total number of reads in JNI mode
     //var readNum = 5000000
     var readNum = 1000000
-    var batchNum = 99010
+    //var readNum = 2
+    //var batchNum = 99010
+    var batchNum = 500000
     var n = 0
     var numProcessed = 0
     var seqs: Array[FASTQSingleNode] = new Array[FASTQSingleNode](0)
@@ -443,10 +445,14 @@ object FastMap {
     if((bwaMemOpt.flag & MEM_F_PE) > 0) {
       //reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_10Mreads.fq"))
       //reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_2_10Mreads.fq"))
-      reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_1Mreads.fq"))
-      reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_2_1Mreads.fq"))
+      //reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_1Mreads.fq"))
+      //reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_2_1Mreads.fq"))
       //reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/JNI_1_2M.fq"))
       //reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/JNI_2_2M.fq"))
+      //reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/correctness_verification/HCC1954_1_read17102.fq"))
+      //reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/correctness_verification/HCC1954_2_read17102.fq"))
+      reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/correctness_verification/HCC1954_1_1-1M.fq"))
+      reader2 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/correctness_verification/HCC1954_2_1-1M.fq"))
     }
     else
       reader1 = new BufferedReader(new FileReader("/home/ytchen/genomics/data/HCC1954_1_20reads.fq"))      
@@ -585,6 +591,15 @@ object FastMap {
       memSamPeGroupJNI(opt, bns, pac, pes, testReads.size >> 1, numProcessed >> 1, seqsPairs, alnRegVecPairs)
     }
 
-    testReads.foreach(r => samWriter.writeString((r.seq.sam)))
+    var samStringArray = new Array[String](testReads.length)
+    i = 0
+    while(i < testReads.length) {
+      samStringArray(i) = new String
+      samStringArray(i) = testReads(i).seq.sam
+      i += 1
+    }
+
+    samWriter.writeStringArray(samStringArray)
+    //testReads.foreach(r => samWriter.writeString((r.seq.sam)))
   }
 } 
